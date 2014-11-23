@@ -77,20 +77,23 @@ draw = (gl, locationUniform, mvpMatrix) ->
   gl.uniformMatrix4fv(locationUniform, false, mvpMatrix)
   gl.drawArrays(gl.TRIANGLES, 0, 3)
 
-window.addEventListener 'load', ->
-  # prepare canvas element
-  canvas = document.createElement 'canvas'
-  document.body.appendChild canvas
+# loop property
+count = 0
 
-  canvas.width = WIDTH
-  canvas.height = HEIGHT
+# matrix buffers
+m = new matIV()
+mMatrix   = m.identity(m.create())
+vMatrix   = m.identity(m.create())
+pMatrix   = m.identity(m.create())
+tmpMatrix = m.identity(m.create())
+mvpMatrix = m.identity(m.create())
 
-  # create canvas context
-  gl = canvas.getContext('webgl')
-  gl.clearColor(0.0, 0.0, 0.0, 1.0)
-  gl.clearDepth(1.0)
-  gl.clear(gl.COLOR_BUFFER_BIT)
+# setup camera
+m.lookAt([0.0, 0.0, 3.0], [0, 0, 0], [0, 1, 0], vMatrix)
+m.perspective(90, WIDTH / HEIGHT, 0.1, 100, pMatrix)
+m.multiply(pMatrix, vMatrix, tmpMatrix)
 
+startLoop = (gl) ->
   # load shaders
   vertexShader = loadShader gl, gl.VERTEX_SHADER, vertexShaderSource
   fragmentShader = loadShader gl, gl.FRAGMENT_SHADER, fragmentShaderSource
@@ -99,7 +102,7 @@ window.addEventListener 'load', ->
   # uniform
   locationUniform = gl.getUniformLocation(program, 'mvpMatrix')
 
-  ## prepare position attribute
+  # prepare position attribute
   positionVBO = createVBO gl, vertexPosition
   addAttribute(gl, program, positionVBO, 'position', 3)
 
@@ -107,28 +110,44 @@ window.addEventListener 'load', ->
   colorVBO = createVBO gl, vertexColor
   addAttribute(gl, program, colorVBO, 'color', 4)
 
-  # create mvpMatrix
-  m = new matIV()
-  mMatrix   = m.identity(m.create())
-  vMatrix   = m.identity(m.create())
-  pMatrix   = m.identity(m.create())
-  tmpMatrix = m.identity(m.create())
-  mvpMatrix = m.identity(m.create())
+  do update = ->
+    count++
+    # if (count % 15) isnt 0 then return do update
 
-  # setup camera
-  m.lookAt([0.0, 0.0, 3.0], [0, 0, 0], [0, 1, 0], vMatrix)
-  m.perspective(90, WIDTH / HEIGHT, 0.1, 100, pMatrix)
-  m.multiply(pMatrix, vMatrix, tmpMatrix)
+    gl.clearColor(0.0, 0.0, 0.0, 1.0)
+    gl.clearDepth(1.0)
+    gl.clear(gl.COLOR_BUFFER_BIT)
 
-  # Draw 1st item
-  m.translate(mMatrix, [1.5, 0.0, 0.0], mMatrix)
-  m.multiply(tmpMatrix, mMatrix, mvpMatrix)
-  draw(gl, locationUniform, mvpMatrix)
+    rad = (count % 360) * Math.PI / 180
 
-  # Draw 2nd item
-  m.identity(mMatrix)
-  m.translate(mMatrix, [-1.5, 0.0, 0.0], mMatrix)
-  m.multiply(tmpMatrix, mMatrix, mvpMatrix)
-  draw(gl, locationUniform, mvpMatrix)
+    # Draw 1st item
+    x = Math.cos(rad)
+    y = Math.sin(rad)
 
-  gl.flush()
+    m.identity(mMatrix)
+    m.translate(mMatrix, [x, y, 0.0], mMatrix)
+    m.multiply(tmpMatrix, mMatrix, mvpMatrix)
+    draw(gl, locationUniform, mvpMatrix)
+
+    # Draw 2nd item
+    x = Math.sin(rad)
+    y = Math.cos(rad)
+    scaleRate = Math.sin(rad)
+
+    m.identity(mMatrix)
+    m.translate(mMatrix, [x-1.5, y, 0.0], mMatrix)
+    m.scale(mMatrix, [scaleRate, scaleRate, 0.0], mMatrix)
+    m.multiply(tmpMatrix, mMatrix, mvpMatrix)
+    draw(gl, locationUniform, mvpMatrix)
+
+    gl.flush()
+    requestAnimationFrame update
+
+window.addEventListener 'load', ->
+  canvas = document.createElement 'canvas'
+  document.body.appendChild canvas
+  canvas.width  = WIDTH
+  canvas.height = HEIGHT
+
+  gl = canvas.getContext('webgl')
+  startLoop(gl)
