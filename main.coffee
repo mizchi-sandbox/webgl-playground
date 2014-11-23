@@ -79,11 +79,12 @@ window.addEventListener 'load', ->
   vbo = createVBO gl, vertexPosition
   gl.bindBuffer(gl.ARRAY_BUFFER, vbo)
 
+  # prepare position attribute
   attLocation = gl.getAttribLocation(program, 'position')
-  attStride = 3
   gl.enableVertexAttribArray(attLocation)
-  gl.vertexAttribPointer(attLocation, attStride, gl.FLOAT, false, 0, 0)
+  gl.vertexAttribPointer(attLocation, 3, gl.FLOAT, false, 0, 0)
 
+  # create mvpMatrix
   m = new matIV()
   mMatrix = m.identity(m.create())
   vMatrix = m.identity(m.create())
@@ -91,9 +92,10 @@ window.addEventListener 'load', ->
   mvpMatrix = m.identity(m.create())
   m.lookAt([0.0, 1.0, 3.0], [0, 0, 0], [0, 1, 0], vMatrix)
   m.perspective(90, WIDTH / HEIGHT, 0.1, 100, pMatrix)
-
   m.multiply(pMatrix, vMatrix, mvpMatrix)
   m.multiply(mvpMatrix, mMatrix, mvpMatrix)
+
+  # register mvpMatrix as uniform
   uniLocation = gl.getUniformLocation(program, 'mvpMatrix')
   gl.uniformMatrix4fv(uniLocation, false, mvpMatrix)
 

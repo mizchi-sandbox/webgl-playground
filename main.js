@@ -46,7 +46,7 @@
   };
 
   window.addEventListener('load', function() {
-    var attLocation, attStride, canvas, fragmentShader, gl, m, mMatrix, mvpMatrix, pMatrix, program, uniLocation, vMatrix, vbo, vertexShader;
+    var attLocation, canvas, fragmentShader, gl, m, mMatrix, mvpMatrix, pMatrix, program, uniLocation, vMatrix, vbo, vertexShader;
     canvas = document.createElement('canvas');
     document.body.appendChild(canvas);
     canvas.width = WIDTH;
@@ -61,9 +61,8 @@
     vbo = createVBO(gl, vertexPosition);
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     attLocation = gl.getAttribLocation(program, 'position');
-    attStride = 3;
     gl.enableVertexAttribArray(attLocation);
-    gl.vertexAttribPointer(attLocation, attStride, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(attLocation, 3, gl.FLOAT, false, 0, 0);
     m = new matIV();
     mMatrix = m.identity(m.create());
     vMatrix = m.identity(m.create());
