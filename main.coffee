@@ -4,16 +4,21 @@ HEIGHT = 300
 ## shader sources
 vertexShaderSource = """
 attribute vec3 position;
+attribute vec4 color;
 uniform   mat4 mvpMatrix;
+varying   vec4 vColor;
 
 void main(void){
+    vColor = color;
     gl_Position = mvpMatrix * vec4(position, 1.0);
 }
 """
 
 fragmentShaderSource = """
+precision mediump float;
+varying vec4 vColor;
 void main(void){
-    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    gl_FragColor = vColor;
 }
 """
 
@@ -22,6 +27,12 @@ vertexPosition = new Float32Array [
   0.0, 1.0, 0.0,
   1.0, 0.0, 0.0,
   -1.0, 0.0, 0.0
+]
+
+vertexColor = new Float32Array [
+  1.0, 0.0, 0.0, 1.0,
+  0.0, 1.0, 0.0, 1.0,
+  0.0, 0.0, 1.0, 1.0
 ]
 
 # load and compile shader by gl context
@@ -56,6 +67,12 @@ createVBO = (gl, data)->
   gl.bindBuffer(gl.ARRAY_BUFFER, null)
   vbo
 
+addAttribute = (gl, program, vbo, name, type, argsCount ) ->
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo)
+  attr = gl.getAttribLocation(program, name)
+  gl.enableVertexAttribArray(attr)
+  gl.vertexAttribPointer(attr, argsCount, type, false, 0, 0)
+
 window.addEventListener 'load', ->
   # prepare canvas element
   canvas = document.createElement 'canvas'
@@ -76,13 +93,21 @@ window.addEventListener 'load', ->
 
   program = createProgram gl, vertexShader, fragmentShader
 
-  vbo = createVBO gl, vertexPosition
-  gl.bindBuffer(gl.ARRAY_BUFFER, vbo)
+  positionVBO = createVBO gl, vertexPosition
+  colorVBO = createVBO gl, vertexColor
 
-  # prepare position attribute
+  ## prepare position attribute
+  # addAttribute(gl, program, positionVBO, 'position', gl.FLOAT, 3)
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionVBO)
   attLocation = gl.getAttribLocation(program, 'position')
   gl.enableVertexAttribArray(attLocation)
   gl.vertexAttribPointer(attLocation, 3, gl.FLOAT, false, 0, 0)
+
+  # prepare color attribute
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorVBO)
+  attColor = gl.getAttribLocation(program, 'color')
+  gl.enableVertexAttribArray(attColor)
+  gl.vertexAttribPointer(attColor, 4, gl.FLOAT, false, 0, 0)
 
   # create mvpMatrix
   m = new matIV()
