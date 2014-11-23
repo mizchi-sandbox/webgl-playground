@@ -24,9 +24,9 @@ void main(void){
 
 ## vertex position
 vertexPosition = new Float32Array [
-  0.0, 1.0, 0.0,
-  1.0, 0.0, 0.0,
-  -1.0, 0.0, 0.0
+  0.0, 1.0, 1.0,
+  1.0, 0.0, 1.0,
+  -1.0, 0.0, 1.0
 ]
 
 vertexColor = new Float32Array [
@@ -67,11 +67,15 @@ createVBO = (gl, data)->
   gl.bindBuffer(gl.ARRAY_BUFFER, null)
   vbo
 
-addAttribute = (gl, program, vbo, name, type, argsCount ) ->
+addAttribute = (gl, program, vbo, name, argsCount, type = gl.FLOAT ) ->
   gl.bindBuffer(gl.ARRAY_BUFFER, vbo)
   attr = gl.getAttribLocation(program, name)
   gl.enableVertexAttribArray(attr)
   gl.vertexAttribPointer(attr, argsCount, type, false, 0, 0)
+
+draw = (gl, locationUniform, mvpMatrix) ->
+  gl.uniformMatrix4fv(locationUniform, false, mvpMatrix)
+  gl.drawArrays(gl.TRIANGLES, 0, 3)
 
 window.addEventListener 'load', ->
   # prepare canvas element
@@ -90,39 +94,41 @@ window.addEventListener 'load', ->
   # load shaders
   vertexShader = loadShader gl, gl.VERTEX_SHADER, vertexShaderSource
   fragmentShader = loadShader gl, gl.FRAGMENT_SHADER, fragmentShaderSource
-
   program = createProgram gl, vertexShader, fragmentShader
 
-  positionVBO = createVBO gl, vertexPosition
-  colorVBO = createVBO gl, vertexColor
+  # uniform
+  locationUniform = gl.getUniformLocation(program, 'mvpMatrix')
 
   ## prepare position attribute
-  # addAttribute(gl, program, positionVBO, 'position', gl.FLOAT, 3)
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionVBO)
-  attLocation = gl.getAttribLocation(program, 'position')
-  gl.enableVertexAttribArray(attLocation)
-  gl.vertexAttribPointer(attLocation, 3, gl.FLOAT, false, 0, 0)
+  positionVBO = createVBO gl, vertexPosition
+  addAttribute(gl, program, positionVBO, 'position', 3)
 
   # prepare color attribute
-  gl.bindBuffer(gl.ARRAY_BUFFER, colorVBO)
-  attColor = gl.getAttribLocation(program, 'color')
-  gl.enableVertexAttribArray(attColor)
-  gl.vertexAttribPointer(attColor, 4, gl.FLOAT, false, 0, 0)
+  colorVBO = createVBO gl, vertexColor
+  addAttribute(gl, program, colorVBO, 'color', 4)
 
   # create mvpMatrix
   m = new matIV()
-  mMatrix = m.identity(m.create())
-  vMatrix = m.identity(m.create())
-  pMatrix = m.identity(m.create())
+  mMatrix   = m.identity(m.create())
+  vMatrix   = m.identity(m.create())
+  pMatrix   = m.identity(m.create())
+  tmpMatrix = m.identity(m.create())
   mvpMatrix = m.identity(m.create())
-  m.lookAt([0.0, 1.0, 3.0], [0, 0, 0], [0, 1, 0], vMatrix)
+
+  # setup camera
+  m.lookAt([0.0, 0.0, 3.0], [0, 0, 0], [0, 1, 0], vMatrix)
   m.perspective(90, WIDTH / HEIGHT, 0.1, 100, pMatrix)
-  m.multiply(pMatrix, vMatrix, mvpMatrix)
-  m.multiply(mvpMatrix, mMatrix, mvpMatrix)
+  m.multiply(pMatrix, vMatrix, tmpMatrix)
 
-  # register mvpMatrix as uniform
-  uniLocation = gl.getUniformLocation(program, 'mvpMatrix')
-  gl.uniformMatrix4fv(uniLocation, false, mvpMatrix)
+  # Draw 1st item
+  m.translate(mMatrix, [1.5, 0.0, 0.0], mMatrix)
+  m.multiply(tmpMatrix, mMatrix, mvpMatrix)
+  draw(gl, locationUniform, mvpMatrix)
 
-  gl.drawArrays(gl.TRIANGLES, 0, 3)
+  # Draw 2nd item
+  m.identity(mMatrix)
+  m.translate(mMatrix, [-1.5, 0.0, 0.0], mMatrix)
+  m.multiply(tmpMatrix, mMatrix, mvpMatrix)
+  draw(gl, locationUniform, mvpMatrix)
+
   gl.flush()
