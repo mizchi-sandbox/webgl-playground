@@ -23,18 +23,25 @@ void main(void){
 """
 
 ## vertex position
-vertexPosition = new Float32Array [
-  0.0, 1.0, 1.0,
-  1.0, 0.0, 1.0,
-  -1.0, 0.0, 1.0
+window.assets = {}
+assets.position = new Float32Array [
+     0.0,  1.0,  0.0,
+     1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0,
+     0.0, -1.0,  0.0
+]
+assets.color = new Float32Array [
+    1.0, 0.0, 0.0, 1.0,
+    0.0, 1.0, 0.0, 1.0,
+    0.0, 0.0, 1.0, 1.0,
+    1.0, 1.0, 1.0, 1.0
 ]
 
-vertexColor = new Float32Array [
-  1.0, 0.0, 0.0, 1.0,
-  0.0, 1.0, 0.0, 1.0,
-  0.0, 0.0, 1.0, 1.0
+assets.indexBuffer = new Int16Array [
+    0, 1, 2,
+    1, 2, 3
 ]
-
+    
 # load and compile shader by gl context
 loadShader = (gl, type, source) ->
   shader = gl.createShader type
@@ -73,12 +80,12 @@ addAttribute = (gl, program, vbo, name, argsCount, type = gl.FLOAT ) ->
   gl.enableVertexAttribArray(attr)
   gl.vertexAttribPointer(attr, argsCount, type, false, 0, 0)
 
-draw = (gl, locationUniform, mvpMatrix) ->
-  gl.uniformMatrix4fv(locationUniform, false, mvpMatrix)
-  gl.drawArrays(gl.TRIANGLES, 0, 3)
-
-# loop property
-count = 0
+createIbo = (gl, data) ->
+  ibo = gl.createBuffer()
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo)
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, data, gl.STATIC_DRAW)
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null)
+  ibo
 
 # matrix buffers
 m = new matIV()
@@ -88,57 +95,47 @@ pMatrix   = m.identity(m.create())
 tmpMatrix = m.identity(m.create())
 mvpMatrix = m.identity(m.create())
 
-# setup camera
-m.lookAt([0.0, 0.0, 3.0], [0, 0, 0], [0, 1, 0], vMatrix)
-m.perspective(90, WIDTH / HEIGHT, 0.1, 100, pMatrix)
-m.multiply(pMatrix, vMatrix, tmpMatrix)
-
 startLoop = (gl) ->
+  # loop property
+  count = 0
+
   # load shaders
   vertexShader = loadShader gl, gl.VERTEX_SHADER, vertexShaderSource
   fragmentShader = loadShader gl, gl.FRAGMENT_SHADER, fragmentShaderSource
   program = createProgram gl, vertexShader, fragmentShader
 
+  # index buffer
+  ibo = createIbo(gl, assets.indexBuffer)
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo)
+
+  # prepare attributes
+  positionVBO = createVBO gl, assets.position
+  colorVBO = createVBO gl, assets.color
+
+  addAttribute(gl, program, positionVBO, 'position', 3)
+  addAttribute(gl, program, colorVBO, 'color', 4)
+
   # uniform
   locationUniform = gl.getUniformLocation(program, 'mvpMatrix')
 
-  # prepare position attribute
-  positionVBO = createVBO gl, vertexPosition
-  addAttribute(gl, program, positionVBO, 'position', 3)
-
-  # prepare color attribute
-  colorVBO = createVBO gl, vertexColor
-  addAttribute(gl, program, colorVBO, 'color', 4)
+  # setup camera
+  m.lookAt([0.0, 0.0, 5.0], [0, 0, 0], [0, 1, 0], vMatrix)
+  m.perspective(45, WIDTH / HEIGHT, 0.1, 100, pMatrix)
+  m.multiply(pMatrix, vMatrix, tmpMatrix)
 
   do update = ->
-    count++
-    # if (count % 15) isnt 0 then return do update
-
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.clearDepth(1.0)
     gl.clear(gl.COLOR_BUFFER_BIT)
 
+    count++
     rad = (count % 360) * Math.PI / 180
 
-    # Draw 1st item
-    x = Math.cos(rad)
-    y = Math.sin(rad)
-
     m.identity(mMatrix)
-    m.translate(mMatrix, [x, y, 0.0], mMatrix)
+    m.rotate(mMatrix, rad, [0, 1, 0], mMatrix)
     m.multiply(tmpMatrix, mMatrix, mvpMatrix)
-    draw(gl, locationUniform, mvpMatrix)
-
-    # Draw 2nd item
-    x = Math.sin(rad)
-    y = Math.cos(rad)
-    scaleRate = Math.sin(rad)
-
-    m.identity(mMatrix)
-    m.translate(mMatrix, [x-1.5, y, 0.0], mMatrix)
-    m.scale(mMatrix, [scaleRate, scaleRate, 0.0], mMatrix)
-    m.multiply(tmpMatrix, mMatrix, mvpMatrix)
-    draw(gl, locationUniform, mvpMatrix)
+    gl.uniformMatrix4fv(locationUniform, false, mvpMatrix)
+    gl.drawElements(gl.TRIANGLES, assets.indexBuffer.length, gl.UNSIGNED_SHORT, 0)
 
     gl.flush()
     requestAnimationFrame update
